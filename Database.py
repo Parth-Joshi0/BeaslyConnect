@@ -23,12 +23,6 @@ os.makedirs(VOICE_RECORDINGS_DIR, exist_ok=True)
 @app.route('/GetPendingRequests', methods=['GET'])
 def get_pending_requests():
     try:
-        # Read help requests
-        if not os.path.exists(HELP_REQUESTS_PATH):
-            return jsonify({'requests': []})
-
-        with open(HELP_REQUESTS_PATH, "r") as f:
-            requests_db = json.load(f)
 
         # Load user database to get user info
         with open(USER_DB_PATH, "r") as f:
