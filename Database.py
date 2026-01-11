@@ -12,6 +12,63 @@ CORS(app)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "VolunteerDB.json")
 USER_DB_PATH = os.path.join(BASE_DIR, "UserDB.json")
+HELP_REQUESTS_PATH = os.path.join(BASE_DIR, "HelpRequests.json")
+VOICE_RECORDINGS_DIR = os.path.join(BASE_DIR, "voice_recordings")
+
+# Create voice recordings directory if it doesn't exist
+os.makedirs(VOICE_RECORDINGS_DIR, exist_ok=True)
+
+@app.route('/SubmitHelpRequest', methods=['POST'])
+def submit_help_request():
+    data = request.get_json()
+
+    email = data['email']
+    situation_text = data['situationText']
+    voice_recording = data.get('voiceRecording', None)  # Base64 encoded audio
+
+    # Generate unique request ID
+    request_id = f"req_{int(datetime.now().timestamp())}"
+
+    # Save voice recording if present
+    voice_file_path = None
+    if voice_recording:
+        voice_file_path = os.path.join(VOICE_RECORDINGS_DIR, f"{request_id}.m4a")
+        # Decode base64 and save
+        audio_data = base64.b64decode(voice_recording)
+        with open(voice_file_path, "wb") as f:
+            f.write(audio_data)
+
+    # Create help request object
+    help_request = {
+        "requestId": request_id,
+        "userEmail": email,
+        "situationText": situation_text,
+        "voiceRecordingPath": voice_file_path,
+        "hasVoiceRecording": voice_recording is not None,
+        "timestamp": datetime.now().isoformat(),
+        "status": "pending",  # pending, accepted, completed
+        "assignedVolunteer": None
+    }
+
+    # Read existing requests
+    if os.path.exists(HELP_REQUESTS_PATH):
+        with open(HELP_REQUESTS_PATH, "r") as f:
+            requests_db = json.load(f)
+    else:
+        requests_db = {"requests": []}
+
+    # Add new request
+    requests_db["requests"].append(help_request)
+
+    # Save back to file
+    with open(HELP_REQUESTS_PATH, "w") as f:
+        json.dump(requests_db, f, indent=4)
+
+    return jsonify({
+        'success': True,
+        'requestId': request_id,
+        'message': 'Help request submitted successfully'
+    })
 
 def image_to_base64(image_data):
     """Convert base64 string or return as is"""
