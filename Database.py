@@ -50,6 +50,30 @@ def get_pending_requests():
         print(f"ERROR /GetPendingRequests: {repr(e)}")
         return jsonify({'requests': [], 'error': str(e)}), 500
 
+@app.route('/GetPendingUserRequests', methods=['GET'])
+def get_pending_requests_user():
+    try:
+
+        # Load user database to get user info
+        with open(DB_PATH, "r") as f:
+            vol_db = json.load(f)
+
+            user_email = "goblin1@gmail.com"
+
+            # Find user in database
+            vol_info = None
+            for vol in vol_db.get("Volunteers", []):
+                stored = (vol.get("email/userName") or vol.get("email") or "")
+                if stored.strip().lower() == user_email.strip().lower():
+                    vol_info = vol
+                    break
+
+        return jsonify({'requests': vol_info})
+
+    except Exception as e:
+        print(f"ERROR /GetPendingRequests: {repr(e)}")
+        return jsonify({'requests': [], 'error': str(e)}), 500
+
 
 @app.route('/SubmitHelpRequest', methods=['POST'])
 def submit_help_request():
