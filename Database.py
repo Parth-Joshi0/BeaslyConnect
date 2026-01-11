@@ -113,14 +113,19 @@ def CheckUser(email):
 @app.route('/CheckVol', methods=['POST'])
 def check_vol():
     data = request.get_json()
-    email = data['email']
+    email = (
+            data.get("email")
+            or request.headers.get("X-User-Email")
+            or ""
+    ).strip().lower()
 
     with open("VolunteerDB.json", "r") as f:
         volDB = json.load(f)
 
     for vol in volDB.get("Users", []):
-        if vol.get("email/userName") == email:
-            return jsonify({'hasProfile': True})
+        stored = (vol.get("email/userName") or "").strip().lower()
+        if stored == email:
+            return jsonify({"hasProfile": True})
 
     return jsonify({'hasProfile': False})
 
