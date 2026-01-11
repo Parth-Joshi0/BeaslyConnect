@@ -17,42 +17,57 @@ def image_to_base64(imageDir):  # For Testing
     return encoded_string
 
 
-def makeVolProfile(image, email, name, certifications, age, weight, height, gender,
-                phoneNum, hasCar, carModel = None, carColour = None, currPair = None):
+@app.route('/CreateUpdateProfile', methods=['POST'])
+def create_update_profile():
+    data = request.get_json()
 
-    # Car logic
-    if "Driver's Licence" in certifications and hasCar == '1':
-        car = f"{carColour} {carModel}"
-    else:
-        car = "No Car"
+    email = data['email']
+    profile_data = {
+        'email/userName': email,
+        'fullName': data['fullName'],
+        'phoneNumber': data['phoneNumber'],
+        'certifications': data['certifications'],  # Array of strings
+        'age': data['age'],
+        'gender': data['gender'],
+        'weight': data['weight'],
+        'height': data['height'],
+        'ownsCar': data['ownsCar'],
+        'licensePlate': data.get('licensePlate', ''),
+        'carMake': data.get('carMake', ''),
+        'carColor': data.get('carColor', ''),
+        'profileImage': data.get('profileImage', '')  # Base64 string
+    }
 
-    strength = 10 * math.sqrt(int(weight) / int(height))
-
+    # Read existing database
     with open("VolunteerDB.json", "r") as f:
         volDB = json.load(f)
 
-    user = {
-        "image" : image_to_base64(image),
-        "email/userName": email,
-        "name": name,
-        "Qualifications": certifications,
-        "age": int(age),
-        "height(Inches)": int(height),
-        "weight(Pounds)": int(weight),
-        "gender": gender,
-        "car": car,
-        "carModel": carModel,
-        "carColour": carColour,
-        "strength": int(strength),
-        "phoneNum": phoneNum,
-        'CurrentPair': currPair
-    }
+    # Check if user exists (update) or create new
+    users = volDB.get("Volunteers", [])
+    user_index = None
 
-    volDB["Volunteers"].append(user)
+    for i, vol in enumerate(users):
+        if vol.get("email/userName") == email:
+            user_index = i
+            break
 
+    if user_index is not None:
+        # Update existing user
+        users[user_index] = profile_data
+    else:
+        # Add new user
+        users.append(profile_data)
+
+    volDB["Volunteers"] = users
+
+    # Save back to file
     with open("VolunteerDB.json", "w") as f:
-        json.dump(volDB, f, indent=4)
-    return user
+        json.dump(volDB, f, indent=2)
+
+    return jsonify({
+        'success': True,
+        'message': 'Profile saved successfully'
+    })
 
 
 
