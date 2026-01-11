@@ -9,6 +9,10 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "VolunteerDB.json")
+USER_DB_PATH = os.path.join(BASE_DIR, "UserDB.json")
+
 def image_to_base64(image_data):
     """Convert base64 string or return as is"""
     return image_data
@@ -86,39 +90,70 @@ def create_update_profile():
     })
 
 
+@app.route('/checkUser', methods=['POST'])
+def check_user():
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
+
+        if not email:
+            return jsonify({"hasProfile": False, "error": "Missing email"}), 400
+
+        with open(USER_DB_PATH, "r") as f:
+            userDB = json.load(f)
+
+        users = userDB.get("Users", [])
+        if not isinstance(users, list):
+            return jsonify({"hasProfile": False, "error": "Users is not a list"}), 500
+
+        for user in users:
+            stored = (user.get("email/userName") or user.get("email") or user.get("userName") or "")
+            stored = stored.strip().lower()
+
+            if stored == email:
+                return jsonify({"hasProfile": True})
+
+        return jsonify({"hasProfile": False})
+
+    except FileNotFoundError:
+        return jsonify({"hasProfile": False, "error": f"UserDB.json not found at {USER_DB_PATH}"}), 500
+    except json.JSONDecodeError:
+        return jsonify({"hasProfile": False, "error": "UserDB.json is not valid JSON"}), 500
+    except Exception as e:
+        print("ERROR /checkUser:", repr(e))
+        return jsonify({"hasProfile": False, "error": str(e)}), 500
+
 
 @app.route('/CreateUpdateUserProfile', methods=['POST'])
 def create_update_user_profile():
     data = request.get_json()
 
     email = data['email']
-    image = data.get('profileImage', '')
-    
-    # Read existing database
-    with open("UserDB.json", "r") as f:
-        userDB = json.load(f)
 
     # Create user object
     user = {
-        "Image(base64)": image,
+        "image": data.get('profileImage', ''),
         "email/userName": email,
         "name": data['fullName'],
         "age": int(data['age']),
-        "height(Inches)": int(data['height']),
-        "weight(Pounds)": int(data['weight']),
-        "gender": data['gender'],
-        "otherInformation": data.get('otherInformation', ''),
-        "volGenderPref": data.get('volGenderPref', ''),
-        "phoneNum": data['phoneNumber'],
-        "CurrentPair": None
+        "height": data['height'],
+        "weight": data['weight'],
+        "condition": data.get('condition', ''),
+        "genderPreference": data.get('genderPreference', ''),
+        "currentPair": None
     }
+
+    # Read existing database
+    with open(USER_DB_PATH, "r") as f:
+        userDB = json.load(f)
 
     # Check if user exists (update) or create new
     users = userDB.get("Users", [])
     user_index = None
 
-    for i, usr in enumerate(users):
-        if usr.get("email/userName") == email:
+    for i, u in enumerate(users):
+        stored = (u.get("email/userName") or u.get("email") or u.get("userName") or "")
+        if stored.strip().lower() == email.strip().lower():
             user_index = i
             break
 
@@ -132,28 +167,14 @@ def create_update_user_profile():
     userDB["Users"] = users
 
     # Save back to file
-    with open("UserDB.json", "w") as f:
+    with open(USER_DB_PATH, "w") as f:
         json.dump(userDB, f, indent=4)
 
     return jsonify({
         'success': True,
-        'message': 'Profile saved successfully'
+        'message': 'User profile saved successfully'
     })
 
-
-@app.route('/CheckUser', methods=['GET'])
-def CheckUser(email):
-    with open("UserDB.json", "r") as f:
-        userDB = json.load(f)
-
-    for user in userDB.get("Users", []):
-        if user.get("email/userName") == email:
-            return json.dumps({"hasProfile": True})
-    return json.dumps({"hasProfile": False})
-
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "VolunteerDB.json")
 
 @app.route('/CheckVol', methods=['POST'])
 def check_vol():
