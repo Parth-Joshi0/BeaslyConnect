@@ -5,6 +5,7 @@ import uuid
 import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +18,59 @@ VOICE_RECORDINGS_DIR = os.path.join(BASE_DIR, "voice_recordings")
 
 # Create voice recordings directory if it doesn't exist
 os.makedirs(VOICE_RECORDINGS_DIR, exist_ok=True)
+
+
+@app.route('/GetPendingRequests', methods=['GET'])
+def get_pending_requests():
+    try:
+        # Read help requests
+        if not os.path.exists(HELP_REQUESTS_PATH):
+            return jsonify({'requests': []})
+
+        with open(HELP_REQUESTS_PATH, "r") as f:
+            requests_db = json.load(f)
+
+        # Get pending requests
+        pending = [req for req in requests_db.get("requests", [])
+                   if req.get("status") == "pending"]
+
+        # Load user database to get user info
+        with open(USER_DB_PATH, "r") as f:
+            user_db = json.load(f)
+
+        # Enrich requests with user info
+        enriched_requests = []
+        for req in pending:
+            user_email = req.get("userEmail")
+
+            # Find user in database
+            user_info = None
+            for user in user_db.get("Users", []):
+                stored = (user.get("email/userName") or user.get("email") or "")
+                if stored.strip().lower() == user_email.strip().lower():
+                    user_info = user
+                    break
+
+            if user_info:
+                enriched_req = {
+                    "requestId": req.get("requestId"),
+                    "userEmail": user_email,
+                    "situationText": req.get("situationText"),
+                    "hasVoiceRecording": req.get("hasVoiceRecording", False),
+                    "timestamp": req.get("timestamp"),
+                    "userName": user_info.get("name", "Unknown User"),
+                    "userAge": user_info.get("age"),
+                    "userCondition": user_info.get("condition", ""),
+                    "userGenderPreference": user_info.get("genderPreference", "")
+                }
+                enriched_requests.append(enriched_req)
+
+        return jsonify({'requests': enriched_requests})
+
+    except Exception as e:
+        print(f"ERROR /GetPendingRequests: {repr(e)}")
+        return jsonify({'requests': [], 'error': str(e)}), 500
+
 
 @app.route('/SubmitHelpRequest', methods=['POST'])
 def submit_help_request():
