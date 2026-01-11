@@ -4,7 +4,6 @@ import base64
 import uuid
 import os
 from flask import Flask, jsonify, request
-import json
 
 app = Flask(__name__)
 
