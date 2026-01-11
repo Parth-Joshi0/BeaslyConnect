@@ -4,8 +4,10 @@ import base64
 import uuid
 import os
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 
 def image_to_base64(imageDir):  # For Testing
@@ -107,7 +109,7 @@ def CheckUser(email):
             return json.dumps({"hasProfile": True})
     return json.dumps({"hasProfile": False})
 
-@app.route('/CheckVol', methods=['GET'])
+@app.route('/CheckVol', methods=['POST'])
 def CheckVol(email):
     with open("VolunteerDB.json", "r") as f:
         volDB = json.load(f)

@@ -4,3 +4,4 @@ requests
 python-dotenv
 elevenlabs
 gunicorn
+flask-cors
