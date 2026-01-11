@@ -118,10 +118,6 @@ def check_vol():
         data = request.get_json(silent=True) or {}
         email = (data.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
 
-        print("DEBUG /CheckVol incoming email:", repr(email))
-        print("DEBUG DB_PATH:", DB_PATH)
-        print("DEBUG Content-Type:", request.headers.get("Content-Type"))
-
         if not email:
             return jsonify({"hasProfile": False, "error": "Missing email"}), 400
 
@@ -129,7 +125,6 @@ def check_vol():
             volDB = json.load(f)
 
         users = volDB.get("Volunteers", [])
-        print("DEBUG first user:", users[0] if users else "no users")
         if not isinstance(users, list):
             return jsonify({"hasProfile": False, "error": "Users is not a list"}), 500
 
