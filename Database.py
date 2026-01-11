@@ -87,47 +87,59 @@ def create_update_profile():
 
 
 
+@app.route('/CreateUpdateUserProfile', methods=['POST'])
+def create_update_user_profile():
+    data = request.get_json()
 
-def makeUserProfile(image,email, name, age, weight, height, gender, otherInformation, volGenderPref, phoneNum, currPair = None):
+    email = data['email']
+    image = data.get('profileImage', '')
+    
+    # Read existing database
     with open("UserDB.json", "r") as f:
         userDB = json.load(f)
 
+    # Create user object
     user = {
-        "Image(base64)": image_to_base64(image),
+        "Image(base64)": image,
         "email/userName": email,
-        "name": name,
-        "age": int(age),
-        "height(Inches)": int(height),
-        "weight(Pounds)": int(weight),
-        "gender": gender,
-        "otherInformation": otherInformation,
-        "volGenderPref": volGenderPref,
-        "phoneNum": phoneNum,
-        "CurrentPair": currPair
+        "name": data['fullName'],
+        "age": int(data['age']),
+        "height(Inches)": int(data['height']),
+        "weight(Pounds)": int(data['weight']),
+        "gender": data['gender'],
+        "otherInformation": data.get('otherInformation', ''),
+        "volGenderPref": data.get('volGenderPref', ''),
+        "phoneNum": data['phoneNumber'],
+        "CurrentPair": None
     }
 
-    userDB["Users"].append(user)
+    # Check if user exists (update) or create new
+    users = userDB.get("Users", [])
+    user_index = None
 
+    for i, usr in enumerate(users):
+        if usr.get("email/userName") == email:
+            user_index = i
+            break
+
+    if user_index is not None:
+        # Update existing user
+        users[user_index] = user
+    else:
+        # Add new user
+        users.append(user)
+
+    userDB["Users"] = users
+
+    # Save back to file
     with open("UserDB.json", "w") as f:
         json.dump(userDB, f, indent=4)
-    return user
 
-def updateVolunteer(email, **updates):
-    with open("VolunteerDB.json", "r") as f:
-        volDB = json.load(f)
+    return jsonify({
+        'success': True,
+        'message': 'Profile saved successfully'
+    })
 
-    for vol in volDB.get("Volunteers", []):
-        if vol.get("email/userName") == email:
-            # apply updates (only keys you pass in)
-            for k, v in updates.items():
-                vol[k] = v
-
-            with open("VolunteerDB.json", "w") as f:
-                json.dump(volDB, f, indent=4)
-
-            return vol  # updated record
-
-    return None  # not found
 
 @app.route('/CheckUser', methods=['GET'])
 def CheckUser(email):
