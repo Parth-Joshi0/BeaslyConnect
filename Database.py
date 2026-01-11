@@ -9,60 +9,76 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-def image_to_base64(imageDir):  # For Testing
-    with open(imageDir, "rb") as image_file:
-        image_bytes = image_file.read()
-        encoded_bytes = base64.b64encode(image_bytes)
-        encoded_string = encoded_bytes.decode("utf-8")
-    return encoded_string
-
+def image_to_base64(image_data):
+    """Convert base64 string or return as is"""
+    return image_data
 
 @app.route('/CreateUpdateProfile', methods=['POST'])
 def create_update_profile():
     data = request.get_json()
 
     email = data['email']
-    profile_data = {
-        'email/userName': email,
-        'fullName': data['fullName'],
-        'phoneNumber': data['phoneNumber'],
-        'certifications': data['certifications'],  # Array of strings
-        'age': data['age'],
-        'gender': data['gender'],
-        'weight': data['weight'],
-        'height': data['height'],
-        'ownsCar': data['ownsCar'],
-        'licensePlate': data.get('licensePlate', ''),
-        'carMake': data.get('carMake', ''),
-        'carColor': data.get('carColor', ''),
-        'profileImage': data.get('profileImage', '')  # Base64 string
-    }
+    certifications = data['certifications']
+    hasCar = '1' if data['ownsCar'] else '0'
+
+    # Car logic
+    if "Driver's License" in certifications and hasCar == '1':
+        car = f"{data.get('carColor', '')} {data.get('carMake', '')}"
+        carModel = data.get('carMake', '')
+        carColour = data.get('carColor', '')
+    else:
+        car = "No Car"
+        carModel = None
+        carColour = None
+
+    # Calculate strength
+    weight = int(data['weight'])
+    height = int(data['height'])
+    strength = 10 * math.sqrt(weight / height)
 
     # Read existing database
     with open("VolunteerDB.json", "r") as f:
         volDB = json.load(f)
 
+    # Create user object
+    user = {
+        "image": data.get('profileImage', ''),
+        "email/userName": email,
+        "name": data['fullName'],
+        "Qualifications": certifications,
+        "age": int(data['age']),
+        "height(Inches)": height,
+        "weight(Pounds)": weight,
+        "gender": data['gender'],
+        "car": car,
+        "carModel": carModel,
+        "carColour": carColour,
+        "strength": int(strength),
+        "phoneNum": data['phoneNumber'],
+        'CurrentPair': None
+    }
+
     # Check if user exists (update) or create new
-    users = volDB.get("Volunteers", [])
+    volunteers = volDB.get("Volunteers", [])
     user_index = None
 
-    for i, vol in enumerate(users):
+    for i, vol in enumerate(volunteers):
         if vol.get("email/userName") == email:
             user_index = i
             break
 
     if user_index is not None:
         # Update existing user
-        users[user_index] = profile_data
+        volunteers[user_index] = user
     else:
         # Add new user
-        users.append(profile_data)
+        volunteers.append(user)
 
-    volDB["Volunteers"] = users
+    volDB["Volunteers"] = volunteers
 
     # Save back to file
     with open("VolunteerDB.json", "w") as f:
-        json.dump(volDB, f, indent=2)
+        json.dump(volDB, f, indent=4)
 
     return jsonify({
         'success': True,
