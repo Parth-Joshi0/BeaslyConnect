@@ -30,18 +30,11 @@ def get_pending_requests():
         with open(HELP_REQUESTS_PATH, "r") as f:
             requests_db = json.load(f)
 
-        # Get pending requests
-        pending = [req for req in requests_db.get("requests", [])
-                   if req.get("status") == "pending"]
-
         # Load user database to get user info
         with open(USER_DB_PATH, "r") as f:
             user_db = json.load(f)
 
-        # Enrich requests with user info
-        enriched_requests = []
-        for req in pending:
-            user_email = req.get("userEmail")
+            user_email = "goblin1@gmail.com"
 
             # Find user in database
             user_info = None
@@ -51,21 +44,7 @@ def get_pending_requests():
                     user_info = user
                     break
 
-            if user_info:
-                enriched_req = {
-                    "requestId": req.get("requestId"),
-                    "userEmail": user_email,
-                    "situationText": req.get("situationText"),
-                    "hasVoiceRecording": req.get("hasVoiceRecording", False),
-                    "timestamp": req.get("timestamp"),
-                    "userName": user_info.get("name", "Unknown User"),
-                    "userAge": user_info.get("age"),
-                    "userCondition": user_info.get("condition", ""),
-                    "userGenderPreference": user_info.get("genderPreference", "")
-                }
-                enriched_requests.append(enriched_req)
-
-        return jsonify({'requests': enriched_requests})
+        return jsonify({'requests': user_info})
 
     except Exception as e:
         print(f"ERROR /GetPendingRequests: {repr(e)}")
