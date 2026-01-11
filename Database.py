@@ -9,7 +9,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-
 def image_to_base64(imageDir):  # For Testing
     with open(imageDir, "rb") as image_file:
         image_bytes = image_file.read()
@@ -110,24 +109,47 @@ def CheckUser(email):
     return json.dumps({"hasProfile": False})
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "VolunteerDB.json")
+
 @app.route('/CheckVol', methods=['POST'])
 def check_vol():
-    data = request.get_json()
-    email = (
-            data.get("email")
-            or request.headers.get("X-User-Email")
-            or ""
-    ).strip().lower()
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
 
-    with open("VolunteerDB.json", "r") as f:
-        volDB = json.load(f)
+        print("DEBUG /CheckVol incoming email:", repr(email))
+        print("DEBUG DB_PATH:", DB_PATH)
+        print("DEBUG Content-Type:", request.headers.get("Content-Type"))
 
-    for vol in volDB.get("Users", []):
-        stored = (vol.get("email/userName") or "").strip().lower()
-        if stored == email:
-            return jsonify({"hasProfile": True})
+        if not email:
+            return jsonify({"hasProfile": False, "error": "Missing email"}), 400
 
-    return jsonify({'hasProfile': False})
+        with open(DB_PATH, "r") as f:
+            volDB = json.load(f)
+
+        users = volDB.get("Volunteers", [])
+        print("DEBUG first user:", users[0] if users else "no users")
+        if not isinstance(users, list):
+            return jsonify({"hasProfile": False, "error": "Users is not a list"}), 500
+
+        for vol in users:
+            stored = (vol.get("email/userName") or vol.get("email") or vol.get("userName") or "")
+            stored = stored.strip().lower()
+
+            if stored == email:
+                return jsonify({"hasProfile": True})
+
+        return jsonify({"hasProfile": False})
+
+    except FileNotFoundError:
+        return jsonify({"hasProfile": False, "error": f"VolunteerDB.json not found at {DB_PATH}"}), 500
+    except json.JSONDecodeError:
+        return jsonify({"hasProfile": False, "error": "VolunteerDB.json is not valid JSON"}), 500
+    except Exception as e:
+        print("ERROR /CheckVol:", repr(e))
+        return jsonify({"hasProfile": False, "error": str(e)}), 500
+
 
 def updateUser(email, **updates):
     with open("UserDB.json", "r") as f:
