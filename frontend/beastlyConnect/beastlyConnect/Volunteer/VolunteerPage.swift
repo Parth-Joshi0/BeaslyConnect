@@ -372,8 +372,8 @@ struct LocationMapCard: View {
     @State private var destinationName: String = "Destination"
 
     private let fallback = CLLocationCoordinate2D(
-        latitude: 40.7128,
-        longitude: -74.0060
+        latitude: 43.2635,
+        longitude: -79.9177
     )
 
     private var centerCoord: CLLocationCoordinate2D {
