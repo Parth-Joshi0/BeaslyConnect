@@ -109,14 +109,20 @@ def CheckUser(email):
             return json.dumps({"hasProfile": True})
     return json.dumps({"hasProfile": False})
 
+
 @app.route('/CheckVol', methods=['POST'])
-def CheckVol(email):
+def check_vol():
+    data = request.get_json()
+    email = data['email']
+
     with open("VolunteerDB.json", "r") as f:
         volDB = json.load(f)
+
     for vol in volDB.get("Users", []):
         if vol.get("email/userName") == email:
-            return json.dumps({"hasProfile": True})
-    return json.dumps({"hasProfile": False})
+            return jsonify({'hasProfile': True})
+
+    return jsonify({'hasProfile': False})
 
 def updateUser(email, **updates):
     with open("UserDB.json", "r") as f:
