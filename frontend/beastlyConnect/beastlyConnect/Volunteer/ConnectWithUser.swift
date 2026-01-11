@@ -1,16 +1,18 @@
 import SwiftUI
+import MapKit
 
 // MARK: - Popup Card
 
 struct ProfilePopupCard: View {
     @Binding var isPresented: Bool
-
+    
     // ✅ Use your help request directly (no backend needed)
     var helpRequest: HelpRequest
-
+    
     var onDecline: (() -> Void)? = nil
     var onAccept: (() -> Void)? = nil
-
+    
+    
     var body: some View {
         ZStack {
             Color.black.opacity(0.35)
@@ -20,40 +22,40 @@ struct ProfilePopupCard: View {
                         isPresented = false
                     }
                 }
-
+            
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
                     header
-
+                    
                     VStack(spacing: 16) {
                         Spacer().frame(height: 40)
-
+                        
                         Text(helpRequest.displayName)
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundStyle(.primary)
-
+                        
                         if let phone = helpRequest.phone, !phone.isEmpty {
                             HStack(spacing: 10) {
                                 Image(systemName: "phone.fill")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(.secondary)
-
+                                
                                 Text(phone)
                                     .foregroundStyle(.secondary)
                             }
                         }
-
+                        
                         urgencyRow
-
+                        
                         Divider()
                             .padding(.vertical, 8)
-
+                        
                         VStack(alignment: .leading, spacing: 10) {
                             Text("About")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-
+                            
                             Text(helpRequest.aboutText)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -72,7 +74,7 @@ struct ProfilePopupCard: View {
                         .stroke(Color.black.opacity(0.06), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.18), radius: 22, x: 0, y: 10)
-
+                
                 actionButtons
                     .padding(.top, 16)
             }
@@ -80,7 +82,7 @@ struct ProfilePopupCard: View {
             .transition(.scale.combined(with: .opacity))
         }
     }
-
+    
     private var header: some View {
         LinearGradient(
             colors: [Color.blue, Color.purple],
@@ -93,7 +95,7 @@ struct ProfilePopupCard: View {
                 .offset(y: 62)
         }
     }
-
+    
     private var avatar: some View {
         Image(systemName: helpRequest.avatarSystemImage)
             .resizable()
@@ -107,15 +109,15 @@ struct ProfilePopupCard: View {
             )
             .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 6)
     }
-
+    
     private var urgencyRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.circle")
                 .foregroundStyle(.secondary)
-
+            
             Text("Urgency:")
                 .foregroundStyle(.secondary)
-
+            
             Text(helpRequest.urgency.title)
                 .font(.subheadline.weight(.semibold))
                 .padding(.horizontal, 12)
@@ -123,13 +125,14 @@ struct ProfilePopupCard: View {
                 .background(helpRequest.urgency.pillBackground)
                 .foregroundStyle(helpRequest.urgency.pillForeground)
                 .clipShape(Capsule())
-
+            
             Spacer()
         }
     }
-
+    
     private var actionButtons: some View {
         HStack(spacing: 12) {
+            // Decline Button (remains the same)
             Button {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                     onDecline?()
@@ -149,8 +152,10 @@ struct ProfilePopupCard: View {
                             )
                     )
             }
-
+            
+            // Accept Button
             Button {
+                openMapsForDestination() // Trigger Maps
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                     onAccept?()
                 }
@@ -167,6 +172,33 @@ struct ProfilePopupCard: View {
             }
         }
         .frame(maxWidth: 360)
+    }
+    
+    // Helper function to handle Apple Maps integration
+    private func openMapsForDestination() {
+        let lat: CLLocationDegrees = 45.25853
+        let lon: CLLocationDegrees = -79.92003
+        
+        let regionDistance: CLLocationDistance = 1000
+        let coordinates = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        let regionSpan = MKCoordinateRegion(
+            center: coordinates,
+            latitudinalMeters: regionDistance,
+            longitudinalMeters: regionDistance
+        )
+        
+        // ✅ Explicit type fixes the heterogeneous literal error
+        let options: [String: Any] = [
+            MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: regionSpan.center),
+            MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: regionSpan.span),
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+        ]
+        
+        // (addressDictionary is deprecated; coordinate-only is fine)
+        let placemark = MKPlacemark(coordinate: coordinates)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = helpRequest.displayName
+        mapItem.openInMaps(launchOptions: options)
     }
 }
 
@@ -221,3 +253,4 @@ enum Urgency: String, Codable {
         pillForeground.opacity(0.15)
     }
 }
+
